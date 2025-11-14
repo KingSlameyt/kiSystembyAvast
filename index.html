@@ -233,10 +233,9 @@
             align-self: flex-start;
             border-bottom-left-radius: 5px;
         }
-
+        
         .input-area {
             display: flex;
-            flex-grow: 1;
             width: 100%;
             gap: 15px;
             margin-top: 15px;
@@ -260,7 +259,7 @@
         }
         
         .send-button {
-            padding: 14px 30px;
+            padding: 14px 20px;
             border-radius: 30px;
             border: none;
             background-color: var(--button-bg);
@@ -271,7 +270,7 @@
             transition: background-color 0.3s, transform 0.2s;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
         }
-        
+
         .send-button:hover {
             background-color: var(--button-hover-bg);
             transform: translateY(-2px);
@@ -333,7 +332,7 @@
             transform: translate(-50%, -50%);
             display: none;
             width: 600px;
-            height: 700px; /* Mehr Platz für Upgrades */
+            height: 700px;
             background-color: var(--harvey-bg);
             border: 2px solid var(--header-color);
             border-radius: 15px;
@@ -348,19 +347,28 @@
         #harveyGameContainer.active {
             display: flex;
         }
+        
+        #harveyTitle {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--harvey-coin-color);
+        }
 
         #harveyCanvas {
             border: 1px solid var(--border-color);
             background-color: #222;
             cursor: pointer;
             border-radius: 10px;
+            flex-grow: 1;
+            margin-bottom: 20px;
         }
 
         #harveyStats {
             width: 100%;
             text-align: center;
             font-size: 1.2em;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
             color: var(--harvey-coin-color);
         }
 
@@ -394,7 +402,7 @@
             color: #777;
             cursor: not-allowed;
         }
-
+        
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -411,8 +419,7 @@
                 max-width: 85%;
             }
             .input-area {
-                flex-direction: column;
-                gap: 10px;
+                flex-direction: row;
             }
             .search-bar, .send-button {
                 width: 100%;
@@ -434,7 +441,7 @@
             }
             #harveyCanvas {
                 width: 100%;
-                height: auto; /* Anpassung für mobile Geräte */
+                height: auto;
             }
         }
 
@@ -481,6 +488,7 @@
     <canvas id="gameCanvas" width="500" height="500"></canvas>
 
     <div id="harveyGameContainer">
+        <div id="harveyTitle">AVAST HARVEY KLICKER</div>
         <div id="harveyStats">
             Avast Coins: <span id="harveyCoins">0</span> | Klick: <span id="harveyClickPower">1</span> | Passiv: <span id="harveyPassiveIncome">0</span>/s
         </div>
@@ -488,15 +496,14 @@
         <div id="harveyUpgrades">
             <button class="harvey-upgrade-button" id="upgradeClick" onclick="buyUpgrade('click')">
                 <span>Klickkraft erhöhen</span>
-                <span>Kosten: <span id="clickUpgradeCost">10</span> Avast Coins</span>
+                <span>Kosten: <span id="clickUpgradeCost">10</span> Coins</span>
             </button>
             <button class="harvey-upgrade-button" id="upgradePassive" onclick="buyUpgrade('passive')">
                 <span>Passive Einnahmen</span>
-                <span>Kosten: <span id="passiveUpgradeCost">50</span> Avast Coins</span>
+                <span>Kosten: <span id="passiveUpgradeCost">50</span> Coins</span>
             </button>
             <button class="harvey-upgrade-button" onclick="closeHarveyGame()">
-                <span>Spiel verlassen</span>
-                <span></span>
+                <span>Zurück zum Chat</span>
             </button>
         </div>
     </div>
@@ -522,7 +529,8 @@
 
     <script>
         const API_KEY = "AIzaSyDs6SuvnceMJZh8JQxX5ZX_5aj8K10NJl4";
-        const API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + API_KEY;
+        // Verwende das Modell, das für Chat-Kontext am besten geeignet ist
+        const API_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + API_KEY;
         const CHAT_STORAGE_KEY = "avast-ai-chats";
         const HARVEY_STORAGE_KEY = "avast-harvey-game";
         
@@ -538,11 +546,12 @@
         let harveyGameActive = false;
         let harveyCoins = 0;
         let harveyClickPower = 1;
-        let harveyPassiveIncome = 0; // Coins pro Sekunde
+        let harveyPassiveIncome = 0;
         let clickUpgradeCost = 10;
         let passiveUpgradeCost = 50;
         let harveyGameInterval;
-
+        let harveyCanvas, harveyCtx;
+        
         function saveChats() {
             localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chats));
         }
@@ -601,11 +610,7 @@
             chats[currentChatIndex].messages.forEach(msg => {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${msg.role}-message`;
-                if (msg.role === 'ai') {
-                    messageDiv.innerHTML = formatMarkdownToHtml(msg.text);
-                } else {
-                    messageDiv.textContent = msg.text;
-                }
+                messageDiv.innerHTML = formatMarkdownToHtml(msg.text);
                 chatWindow.appendChild(messageDiv);
             });
             chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -684,14 +689,12 @@
                 return;
             }
 
-            // Spezialbefehl für Snake-Spiel
             if (userMessageText.toLowerCase() === '/snake') {
                 if (harveyGameActive) closeHarveyGame();
                 startSnakeGame();
                 userInput.value = '';
                 return;
             }
-            // Spezialbefehl für Harvey-Spiel
             if (userMessageText.toLowerCase() === '/harvey') {
                 if (snakeGameActive) endSnakeGame();
                 startHarveyGame();
@@ -699,7 +702,6 @@
                 return;
             }
             
-            // Speichere die Benutzer-Nachricht im Chat-Verlauf
             if (currentChatIndex === -1) {
                 startNewChat();
             }
@@ -709,12 +711,24 @@
                 renderChatList();
             }
 
+            // 1. Benutzer-Nachricht zum lokalen Speicher hinzufügen
             chats[currentChatIndex].messages.push({
                 role: 'user',
                 text: userMessageText
             });
             saveChats();
-
+            
+            // 2. Den gesamten Chat-Verlauf für die API vorbereiten (Context)
+            const conversationHistory = chats[currentChatIndex].messages.map(msg => {
+                // Die Gemini-API verwendet 'model' für die KI-Antworten
+                const apiRole = msg.role === 'user' ? 'user' : 'model';
+                return {
+                    role: apiRole,
+                    parts: [{ text: msg.text }]
+                };
+            });
+            
+            // 3. UI-Feedback für die Benutzer-Nachricht
             const userMessageDiv = document.createElement('div');
             userMessageDiv.className = 'message user-message';
             userMessageDiv.textContent = userMessageText;
@@ -722,6 +736,7 @@
 
             chatWindow.scrollTop = chatWindow.scrollHeight;
 
+            // 4. UI-Feedback für die "Denkpause" der KI
             const aiMessageDiv = document.createElement('div');
             aiMessageDiv.className = 'message ai-message';
             aiMessageDiv.textContent = 'Avast denkt nach...';
@@ -733,17 +748,14 @@
             document.querySelector('.send-button').disabled = true;
 
             try {
+                // 5. API-Aufruf mit dem gesamten Konversationsverlauf
                 const response = await fetch(API_ENDPOINT, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: userMessageText
-                            }]
-                        }]
+                        contents: conversationHistory // Sende den gesamten Kontext
                     })
                 });
 
@@ -770,6 +782,7 @@
                     finalAiMessage.textContent = aiResponse;
                 }
                 
+                // 6. KI-Antwort zum lokalen Speicher hinzufügen
                 chats[currentChatIndex].messages.push({
                     role: 'ai',
                     text: aiResponse
@@ -794,7 +807,7 @@
         }
 
         document.getElementById('userInput').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter' && !userInput.disabled) {
+            if (event.key === 'Enter' && !document.getElementById('userInput').disabled) {
                 sendMessage();
             }
         });
@@ -816,7 +829,7 @@
             renderChatList();
         });
 
-        // Snake Game Logik
+        // Snake Game Logik (unverändert)
         function startSnakeGame() {
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
@@ -833,7 +846,7 @@
             
             placeFood();
             
-            document.addEventListener('keydown', changeSnakeDirection); // Geändert von changeDirection
+            document.addEventListener('keydown', changeSnakeDirection);
             
             gameLoop = setInterval(gameTick, gameSpeed);
 
@@ -845,8 +858,8 @@
                 
                 moveSnake();
                 
-                if (checkSnakeCollision()) { // Geändert von checkCollision
-                    endSnakeGame(); // Geändert von endGame
+                if (checkSnakeCollision()) {
+                    endSnakeGame();
                     return;
                 }
                 
@@ -857,7 +870,7 @@
                     snake.pop();
                 }
                 
-                drawSnake(); // Geändert von draw
+                drawSnake();
             }
 
             function moveSnake() {
@@ -881,7 +894,7 @@
                 snake.unshift(head);
             }
 
-            function drawSnake() { // Geändert von draw
+            function drawSnake() {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
@@ -908,7 +921,7 @@
                 }
             }
 
-            function checkSnakeCollision() { // Geändert von checkCollision
+            function checkSnakeCollision() {
                 const head = snake[0];
                 
                 if (head.x < 0 || head.x >= canvas.width / gridSize || head.y < 0 || head.y >= canvas.height / gridSize) {
@@ -928,7 +941,7 @@
                 return snake[0].x === food.x && snake[0].y === food.y;
             }
 
-            function changeSnakeDirection(event) { // Geändert von changeDirection
+            function changeSnakeDirection(event) {
                 const keyPressed = event.key;
                 const up = direction === 'up';
                 const down = direction === 'down';
@@ -946,7 +959,7 @@
                 }
             }
             
-            function endSnakeGame() { // Geändert von endGame
+            function endSnakeGame() {
                 snakeGameActive = false;
                 
                 const message = `Snake Spiel vorbei! Dein Score: ${score}. Tippe /snake, um erneut zu spielen.`;
@@ -993,88 +1006,49 @@
         }
 
         function updateHarveyHUD() {
-            document.getElementById('harveyCoins').textContent = harveyCoins.toFixed(0);
+            document.getElementById('harveyCoins').textContent = Math.floor(harveyCoins).toFixed(0);
             document.getElementById('harveyClickPower').textContent = harveyClickPower.toFixed(0);
             document.getElementById('harveyPassiveIncome').textContent = harveyPassiveIncome.toFixed(1);
             document.getElementById('clickUpgradeCost').textContent = clickUpgradeCost.toFixed(0);
             document.getElementById('passiveUpgradeCost').textContent = passiveUpgradeCost.toFixed(0);
 
-            // Button-Status aktualisieren
             document.getElementById('upgradeClick').disabled = harveyCoins < clickUpgradeCost;
             document.getElementById('upgradePassive').disabled = harveyCoins < passiveUpgradeCost;
         }
 
         function drawHarvey() {
-            const canvas = document.getElementById('harveyCanvas');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Canvas leeren
+            harveyCanvas = document.getElementById('harveyCanvas');
+            harveyCtx = harveyCanvas.getContext('2d');
+            harveyCtx.clearRect(0, 0, harveyCanvas.width, harveyCanvas.height);
 
-            // Harvey (als Kreis dargestellt)
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = 50;
-
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2, false);
-            ctx.fillStyle = 'orange'; // Farbe von Harvey
-            ctx.fill();
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#333';
-            ctx.stroke();
-            ctx.closePath();
-            
-            ctx.fillStyle = '#fff';
-            ctx.font = '24px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('HARVEY', centerX, centerY + 8);
+            harveyCtx.fillStyle = '#f56300';
+            harveyCtx.beginPath();
+            harveyCtx.arc(harveyCanvas.width / 2, harveyCanvas.height / 2, 50, 0, Math.PI * 2);
+            harveyCtx.fill();
         }
 
         function clickHarvey() {
             harveyCoins += harveyClickPower;
             updateHarveyHUD();
             saveHarveyGameState();
-            drawHarveyEffect(); // Optional: Klick-Effekt
         }
-        
-        function drawHarveyEffect() {
-            const canvas = document.getElementById('harveyCanvas');
-            const ctx = canvas.getContext('2d');
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-
-            // Kleiner Kreiseffekt beim Klick
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 60, 0, Math.PI * 2, false);
-            ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
-            ctx.lineWidth = 5;
-            ctx.stroke();
-            ctx.closePath();
-
-            // Kurz warten und dann neu zeichnen
-            setTimeout(() => {
-                drawHarvey();
-            }, 100);
-        }
-
 
         function buyUpgrade(type) {
             if (type === 'click' && harveyCoins >= clickUpgradeCost) {
                 harveyCoins -= clickUpgradeCost;
                 harveyClickPower++;
-                clickUpgradeCost = Math.floor(clickUpgradeCost * 1.5); // Kosten erhöhen
+                clickUpgradeCost = Math.floor(clickUpgradeCost * 1.5);
             } else if (type === 'passive' && harveyCoins >= passiveUpgradeCost) {
                 harveyCoins -= passiveUpgradeCost;
-                harveyPassiveIncome += 0.1; // Passive Einnahmen erhöhen
-                passiveUpgradeCost = Math.floor(passiveUpgradeCost * 1.8); // Kosten erhöhen
+                harveyPassiveIncome++;
+                passiveUpgradeCost = Math.floor(passiveUpgradeCost * 1.8);
             }
             updateHarveyHUD();
             saveHarveyGameState();
         }
 
         function updateHarveyGame() {
-            if (!harveyGameActive) return;
-
-            harveyCoins += harveyPassiveIncome / 10; // Passive Einnahmen pro 100ms
+            harveyCoins += harveyPassiveIncome;
             updateHarveyHUD();
             saveHarveyGameState();
         }
@@ -1087,18 +1061,20 @@
             document.querySelector('.google-button').style.display = 'none';
 
             harveyGameActive = true;
-            loadHarveyGameState(); // Spielstand laden
+            loadHarveyGameState();
             updateHarveyHUD();
             drawHarvey();
 
-            document.getElementById('harveyCanvas').addEventListener('click', clickHarvey);
-            harveyGameInterval = setInterval(updateHarveyGame, 100); // 10 mal pro Sekunde aktualisieren
+            harveyCanvas = document.getElementById('harveyCanvas');
+            harveyCanvas.addEventListener('click', clickHarvey);
+
+            harveyGameInterval = setInterval(updateHarveyGame, 1000);
         }
 
         function closeHarveyGame() {
             harveyGameActive = false;
-            clearInterval(harveyGameInterval); // Passive Einnahmen stoppen
-            document.getElementById('harveyCanvas').removeEventListener('click', clickHarvey);
+            clearInterval(harveyGameInterval);
+            harveyCanvas.removeEventListener('click', clickHarvey);
             document.getElementById('harveyGameContainer').classList.remove('active');
 
             document.querySelector('.container').style.display = 'flex';
@@ -1108,16 +1084,13 @@
             document.querySelector('.send-button').disabled = false;
             document.getElementById('userInput').focus();
             
-            // Optional: Eine Nachricht im Chat, dass das Spiel beendet wurde
             const aiMessageDiv = document.createElement('div');
             aiMessageDiv.className = 'message ai-message';
-            aiMessageDiv.textContent = `Harvey-Spiel beendet. Dein aktueller Kontostand: ${harveyCoins.toFixed(0)} Avast Coins.`;
+            aiMessageDiv.textContent = `Harvey-Spiel beendet. Dein aktueller Kontostand: ${Math.floor(harveyCoins)} Avast Coins.`;
             document.getElementById('chatWindow').appendChild(aiMessageDiv);
             document.getElementById('chatWindow').scrollTop = document.getElementById('chatWindow').scrollHeight;
         }
     </script>
 
 </body>
-
 </html>
-
